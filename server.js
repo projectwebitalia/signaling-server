@@ -2,7 +2,7 @@ const express = require('express');
 const { WebSocketServer } = require('ws');
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 3000;
 
 // Servire una risposta semplice per la radice
 app.get('/', (req, res) => {

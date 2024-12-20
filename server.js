@@ -2,27 +2,26 @@ const express = require('express');
 const { WebSocketServer } = require('ws');
 
 const app = express();
+
+// Usa la variabile d'ambiente PORT (Render la fornisce automaticamente) o imposta un valore predefinito per il test locale
 const PORT = process.env.PORT || 3000;
 
-// Servire una risposta semplice per la radice
 app.get('/', (req, res) => {
   res.send('Il signaling server WebRTC è attivo!');
 });
 
-// Avvia il server HTTP
 const server = app.listen(PORT, () => {
   console.log(`Server HTTP in ascolto su http://localhost:${PORT}`);
 });
 
-// Configurare il WebSocket Server
+// Configurare WebSocket
 const wss = new WebSocketServer({ server });
 
 wss.on('connection', (ws) => {
   console.log('Nuovo client connesso!');
-
+  
   ws.on('message', (message) => {
     console.log(`Messaggio ricevuto: ${message}`);
-    // Inoltra il messaggio agli altri client
     wss.clients.forEach((client) => {
       if (client !== ws && client.readyState === ws.OPEN) {
         client.send(message);

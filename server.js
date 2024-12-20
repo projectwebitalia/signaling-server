@@ -1,36 +1,36 @@
-const WebSocket = require('ws');
 const express = require('express');
+const { WebSocketServer } = require('ws');
 
-// Configura il server HTTP con Express
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-// Serve eventuali file statici (opzionale)
-app.use(express.static('public'));
-
-// Crea il server HTTP
-const server = app.listen(port, () => {
-    console.log(`Signaling server in esecuzione su porta ${port}`);
+// Servire una risposta semplice per la radice
+app.get('/', (req, res) => {
+  res.send('Il signaling server WebRTC è attivo!');
 });
 
-// Configura WebSocket
-const wss = new WebSocket.Server({ server });
+// Avvia il server HTTP
+const server = app.listen(PORT, () => {
+  console.log(`Server HTTP in ascolto su http://localhost:${PORT}`);
+});
+
+// Configurare il WebSocket Server
+const wss = new WebSocketServer({ server });
 
 wss.on('connection', (ws) => {
-    console.log('Nuovo client connesso');
+  console.log('Nuovo client connesso!');
 
-    ws.on('message', (message) => {
-        console.log('Messaggio ricevuto:', message);
-
-        // Invia il messaggio a tutti i client connessi tranne il mittente
-        wss.clients.forEach((client) => {
-            if (client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(message);
-            }
-        });
+  ws.on('message', (message) => {
+    console.log(`Messaggio ricevuto: ${message}`);
+    // Inoltra il messaggio agli altri client
+    wss.clients.forEach((client) => {
+      if (client !== ws && client.readyState === ws.OPEN) {
+        client.send(message);
+      }
     });
+  });
 
-    ws.on('close', () => {
-        console.log('Client disconnesso');
-    });
+  ws.on('close', () => {
+    console.log('Client disconnesso');
+  });
 });

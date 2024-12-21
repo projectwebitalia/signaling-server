@@ -1,51 +1,112 @@
-const express = require('express');
-const WebSocket = require('ws');
+const Socket = require("websocket").server
+const http = require("http")
 
-const app = express();
-const port = process.env.PORT || 3000;
+const server = http.createServer((req, res) => {})
 
-// Imposta una risposta per la root
-app.get('/', (req, res) => {
-  res.send('Signaling server attivo!');
-});
+server.listen(3000, () => {
+    console.log("Listening on port 3000...")
+})
 
-// Crea il server HTTP
-const server = app.listen(port, () => {
-  console.log(`Server HTTP in ascolto su http://localhost:${port}`);
-});
+const webSocket = new Socket({ httpServer: server })
 
-// Crea il server WebSocket
-const wss = new WebSocket.Server({ server });
+let users = []
 
-wss.on('connection', (ws) => {
-  console.log('Un nuovo client è connesso!');
+webSocket.on('request', (req) => {
+    const connection = req.accept()
 
-  // Gestisce la ricezione di messaggi dai client
-  ws.on('message', (message) => {
-    console.log('Messaggio ricevuto:', message);
+    connection.on('message', (message) => {
+        const data = JSON.parse(message.utf8Data)
 
-    // Verifica se il messaggio è un Blob (i dati video inviati dal broadcaster)
-    if (message instanceof Buffer) {
-      console.log('Messaggio binario ricevuto: probabilmente un flusso video');
-      // Inoltra il messaggio a tutti i client connessi
-      wss.clients.forEach((client) => {
-        if (client !== ws && client.readyState === WebSocket.OPEN) {
-          client.send(message);  // Invia il Blob al client
+        const user = findUser(data.username)
+
+        switch(data.type) {
+            case "store_user":
+
+                if (user != null) {
+                    return
+                }
+
+                const newUser = {
+                     conn: connection,
+                     username: data.username
+                }
+
+                users.push(newUser)
+                console.log(newUser.username)
+                break
+            case "store_offer":
+                if (user == null)
+                    return
+                user.offer = data.offer
+                break
+            
+            case "store_candidate":
+                if (user == null) {
+                    return
+                }
+                if (user.candidates == null)
+                    user.candidates = []
+                
+                user.candidates.push(data.candidate)
+                break
+            case "send_answer":
+                if (user == null) {
+                    return
+                }
+
+                sendData({
+                    type: "answer",
+                    answer: data.answer
+                }, user.conn)
+                break
+            case "send_candidate":
+                if (user == null) {
+                    return
+                }
+
+                sendData({
+                    type: "candidate",
+                    candidate: data.candidate
+                }, user.conn)
+                break
+            case "join_call":
+                if (user == null) {
+                    return
+                }
+
+                sendData({
+                    type: "offer",
+                    offer: user.offer
+                }, connection)
+                
+                user.candidates.forEach(candidate => {
+                    sendData({
+                        type: "candidate",
+                        candidate: candidate
+                    }, connection)
+                })
+
+                break
         }
-      });
-    } else {
-      console.log('Messaggio non binario, ignorato');
+    })
+
+    connection.on('close', (reason, description) => {
+        users.forEach(user => {
+            if (user.conn == connection) {
+                users.splice(users.indexOf(user), 1)
+                return
+            }
+        })
+    })
+})
+
+function sendData(data, conn) {
+    conn.send(JSON.stringify(data))
+}
+
+function findUser(username) {
+    for (let i = 0;i < users.length;i++) {
+        if (users[i].username == username)
+            return users[i]
     }
-  });
-
-  // Gestisce la disconnessione di un client
-  ws.on('close', () => {
-    console.log('Un client si è disconnesso');
-  });
-
-  // Gestione degli errori di WebSocket
-  ws.onerror = (error) => {
-    console.error('Errore WebSocket:', error);
-  };
-});
-
+}

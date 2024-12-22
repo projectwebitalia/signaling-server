@@ -4,7 +4,11 @@ const express = require('express');
 // Configura Express per servire una pagina web
 const app = express();
 const PORT = 3000;
-app.use(express.static('public')); // Serve file statici dalla cartella 'public'
+
+// Aggiungi una route per la root
+app.get('/', (req, res) => {
+    res.send('<h1>WebRTC Signaling Server</h1><p>Il signaling server è attivo.</p>');
+});
 
 // Crea un WebSocket server
 const server = app.listen(PORT, () => {
